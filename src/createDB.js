@@ -1,17 +1,49 @@
 import { mkdir, writeFile } from "./fsFuncs.js";
 
+async function parseTask(path, page, task) {
+  await task
+    .click()
+    .then(() => page.waitForSelector(".CodeMirror"))
+    .then(() => page.$$(".CodeMirror"))
+    .then(
+      async (tasks) =>
+        await Promise.all(tasks.map((el) => el.getProperty("innerText")))
+    )
+    .then(
+      async (textsJSON) =>
+        await Promise.all(textsJSON.map((el) => el.jsonValue()))
+    )
+    .then((texts) => {
+      writeFile(`${path}/1. task.md`, texts[0]);
+      writeFile(`${path}/2. hint.md`, texts[1]);
+      writeFile(`${path}/3. success.md`, texts[2]);
+      writeFile(`${path}/url.md`, page.url());
+    });
+}
+
 async function parseItems(path, page, row) {
   await row.click().then(async () => {
     await row
       .$(".expandable-item__content > .menu-item")
       .then(async (menuItem) => await menuItem.click())
+      .then(async () => await page.waitForSelector(".theory-editor__block"))
       .then(async () => {
-        await page.waitForSelector(".theory-editor__block").then(async () => {
-          const content = await page.$$eval(".Markdown", (els) => {
+        const content = await page.$$eval(
+          ".sortable__content .Markdown",
+          (els) => {
             return els.reduce((summury, el) => summury + el.innerHTML, "");
-          });
-          writeFile(`${path}/theory.md`, content);
-        });
+          }
+        );
+        writeFile(`${path}/theory.md`, content);
+        writeFile(`${path}/url.md`, page.url());
+        const tasks = await page.$$(".lessons__task");
+        if (tasks.length > 0) {
+          for (let i = 0; i < tasks.length; i++) {
+            const nextPath = `${path}/Задание ${i + 1}`;
+            mkdir(nextPath);
+            await parseTask(nextPath, page, tasks[i]);
+          }
+        }
       });
   });
 }
@@ -31,12 +63,12 @@ async function parseLessons(path, url, page) {
 async function parseTopics(path, url, page) {
   await page.goto(url);
   await page.$$(".table-list__row").then(async (rows) => {
-    if (rows.length > 0) {
+    if (rows.length > 1) {
       const pathToUrl = {};
-      for (let i = 0; i < rows.length; i++) {
+      for (let i = 1; i < rows.length; i++) {
         const url = await rows[i].$eval("a", (a) => a.href);
         const name = await rows[i].$$eval("a", (as) =>
-          as.reduce((fullName, a) => fullName + " " + a.textContent, "")
+          as.reduce((fullName, a) => fullName + " " + a.innerText, "")
         );
         const nextPath = `${path}/${name}`;
         mkdir(nextPath);
@@ -53,11 +85,11 @@ async function parseTopics(path, url, page) {
 
 export async function parseCourses(path, page) {
   await page.$$(".table-list__row").then(async (rows) => {
-    if (rows.length > 0) {
+    if (rows.length > 1) {
       const pathToUrl = {};
-      for (let i = 0; i < rows.length; i++) {
+      for (let i = 1; i < rows.length; i++) {
         const url = await rows[i].$eval("a", (a) => a.href);
-        const name = await rows[i].$eval("a", (a) => a.textContent);
+        const name = await rows[i].$eval("a", (a) => a.innerText);
         const nextPath = `${path}/${name}`;
         mkdir(nextPath);
         writeFile(`${nextPath}/url.md`, url);
