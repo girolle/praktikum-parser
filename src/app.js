@@ -19,13 +19,11 @@ import { rmRf, mkdir } from "./fsFuncs.js";
       return 1;
     });
 
-  const path = "database";
-
+  const path = env.PATH;
 
   rmRf(path);
   mkdir(path);
   await parseCourses(path, page);
 
-  //await page.screenshot({ path: "./example.png" });
   await browser.close();
 })();

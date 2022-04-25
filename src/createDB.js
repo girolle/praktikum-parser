@@ -1,5 +1,16 @@
 import { mkdir, writeFile } from "./fsFuncs.js";
 
+async function parseTest(path, page) {
+  await page
+    .$x('//div[text()="Тест"]')
+    .then(async (testItems) => await testItems[0].click())
+    .then(async () => await page.waitForSelector(".CodeMirror-line"))
+    .then(
+      async () => await page.$$eval(".CodeMirror-line", (lines) => lines.reduce((summury, line) => summury + line.innerText + "\n", ""))
+    )
+    .then(async (text) => writeFile(`${path}/test.js`, text));
+}
+
 async function parseTask(path, page, task) {
   await task
     .click()
@@ -18,7 +29,8 @@ async function parseTask(path, page, task) {
       writeFile(`${path}/2. hint.md`, texts[1]);
       writeFile(`${path}/3. success.md`, texts[2]);
       writeFile(`${path}/url.md`, page.url());
-    });
+    })
+    .then(() => parseTest(path, page));
 }
 
 async function parseItems(path, page, row) {
@@ -63,9 +75,9 @@ async function parseLessons(path, url, page) {
 async function parseTopics(path, url, page) {
   await page.goto(url);
   await page.$$(".table-list__row").then(async (rows) => {
-    if (rows.length > 1) {
+    if (rows.length > 0) {
       const pathToUrl = {};
-      for (let i = 1; i < rows.length; i++) {
+      for (let i = 0; i < rows.length; i++) {
         const url = await rows[i].$eval("a", (a) => a.href);
         const name = await rows[i].$$eval("a", (as) =>
           as.reduce((fullName, a) => fullName + " " + a.innerText, "")
@@ -85,9 +97,9 @@ async function parseTopics(path, url, page) {
 
 export async function parseCourses(path, page) {
   await page.$$(".table-list__row").then(async (rows) => {
-    if (rows.length > 1) {
+    if (rows.length > 0) {
       const pathToUrl = {};
-      for (let i = 1; i < rows.length; i++) {
+      for (let i = 0; i < rows.length; i++) {
         const url = await rows[i].$eval("a", (a) => a.href);
         const name = await rows[i].$eval("a", (a) => a.innerText);
         const nextPath = `${path}/${name}`;
