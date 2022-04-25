@@ -6,7 +6,10 @@ async function parseTest(path, page) {
     .then(async (testItems) => await testItems[0].click())
     .then(async () => await page.waitForSelector(".CodeMirror-line"))
     .then(
-      async () => await page.$$eval(".CodeMirror-line", (lines) => lines.reduce((summury, line) => summury + line.innerText + "\n", ""))
+      async () =>
+        await page.$$eval(".CodeMirror-line", (lines) =>
+          lines.reduce((summury, line) => summury + line.innerText + "\n", "")
+        )
     )
     .then(async (text) => writeFile(`${path}/test.js`, text));
 }
@@ -38,15 +41,21 @@ async function parseItems(path, page, row) {
     await row
       .$(".expandable-item__content > .menu-item")
       .then(async (menuItem) => await menuItem.click())
-      .then(async () => await page.waitForSelector(".theory-editor__block"))
-      .then(async () => {
-        const content = await page.$$eval(
-          ".sortable__content .Markdown",
-          (els) => {
-            return els.reduce((summury, el) => summury + el.innerHTML, "");
-          }
-        );
-        writeFile(`${path}/theory.md`, content);
+      .then(
+        async () => await page.waitForSelector(".theory-editor__block"),
+        () => console.log("\x1b[31m%s\x1b[0m", `Error on theory in ${path}`)
+      )
+      .then(
+        async () => {
+          const content = await page.$$eval(
+            ".sortable__content .Markdown",
+            (els) => els.reduce((summury, el) => summury + el.innerHTML, "")
+          );
+          writeFile(`${path}/theory.md`, content);
+        },
+        () => console.log("\x1b[35m%s\x1b[0m", `Error on theory in ${path}`)
+      )
+      .finally(async () => {
         writeFile(`${path}/url.md`, page.url());
         const tasks = await page.$$(".lessons__task");
         if (tasks.length > 0) {

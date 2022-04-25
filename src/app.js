@@ -11,7 +11,7 @@ import { rmRf, mkdir } from "./fsFuncs.js";
 
   await signin(page)
     .then(async (result) => {
-      console.log(result);
+      console.log("\x1b[32m%s\x1b[0m", result);
     })
     .catch(async (error) => {
       console.log(error);
@@ -23,7 +23,11 @@ import { rmRf, mkdir } from "./fsFuncs.js";
 
   rmRf(path);
   mkdir(path);
-  await parseCourses(path, page);
-
+  try {
+    await parseCourses(path, page);
+  } catch (error) {
+    await page.screenshot({ path: "./example.png" });
+    console.log(error);
+  }
   await browser.close();
 })();
